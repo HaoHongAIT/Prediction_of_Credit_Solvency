@@ -1,1 +1,2 @@
-# Project_R
+# Giới Thiệu
+Đây là những Project môn học về ngôn ngữ R
