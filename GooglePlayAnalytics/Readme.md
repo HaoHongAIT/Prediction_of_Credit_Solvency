@@ -1,7 +1,4 @@
-# Đề Xuất
-
-
-## Đề tài: Các yếu tố ảnh hưởng đến người đối với ứng dụng trên Google Play Store
+## Đề tài: Các yếu tố ảnh hưởng đến người đối với ứng dụng trên Google Play Store 
 |MSSV|Thành viên|
 |:------:|:----|
 |19133022 |**Hồng Tiến Hào**|
@@ -9,11 +6,10 @@
 |20133036 |**Nguyễn Thành Đồng**|
 |18133024 |**Ngô Phi Lít**|
 
-*Giáo viên hướng dẫn*: **Quách Đình Hoàng**
+*Giáo viên hướng dẫn*: **Ths. Quách Đình Hoàng**
 
 
 ## Phần 1 - Giới thiệu:
-
 
 ### 1.1 Nguồn gốc của dữ liệu nghiên cứu
 + Tập dữ liêu phân tích với các đối tượng dữ liệu là các ứng dụng trên google playstore trong thời gian 2016,2017, 2018.
@@ -44,35 +40,24 @@
 1. **Android Ver**: phiên bản android tối thiểu để sử dụng ứng dụng
 
 
-## Phần 2 - Dữ liệu
-
-## PHẦN 3 - KẾ HOẠCH PHÂN TÍCH DỮ LIỆU
-
-
-### 3.1. Phân tích dữ liệu
+## Phần 2 - Đặt Vấn Đề
  
-1. Loại free và trả phí có ảnh hưởng đến diểm rating hay không
-2. Thể loại ứng dụng có ảnh hưởng tới điểm rating của ứng dụng hay không?
-3. Nhóm tuổi là mục tiêu của ứng dụng có ảnh hưởng tới điểm rating của ứng dụng hay không?
-3. Số lượng reviews có ảnh hưởng tới điểm rating của ứng dụng hay không?
-4. kích thước của ứng dụng có ảnh hưởng tới điểm rating của ứng dụng hay không?
-5. số lượng lượt tải ứng dụng sẽ ảnh hưởng như thế nào đến điểm rating của ứng dụng?
-6. Giá của ứng dụng sẽ ảnh hưởng như thế nào đến điểm rating của ứng dụng
+1. Phát triển của số lượng theo thời gian
+2. Loại free và trả phí có ảnh hưởng đến diểm rating hay không
+3. Thể loại ứng dụng có ảnh hưởng tới điểm rating của ứng dụng hay không?
+4. Nhóm tuổi là mục tiêu của ứng dụng có ảnh hưởng tới điểm rating của ứng dụng hay không?
+5. Số lượng reviews có ảnh hưởng tới điểm rating của ứng dụng hay không?
+6. kích thước của ứng dụng có ảnh hưởng tới điểm rating của ứng dụng hay không?
+7. số lượng lượt tải ứng dụng sẽ ảnh hưởng như thế nào đến điểm rating của ứng dụng?
+8. Giá của ứng dụng sẽ ảnh hưởng như thế nào đến điểm rating của ứng dụng
+## PHẦN 3 - KẾ HOẠCH PHÂN TÍCH DỮ LIỆU
+### 3.1. Làm sạch dữ liệu
+- Xem xét xử lý các giá trị NA bằng (mean, median, max,...)
+- Chuẩn hóa, xử lý dữ liệu cần thiết cho phân tích
 
+### 3.2. Học Máy
+1. KNN
+2. Các phương pháp hồi quy (đơn biến, đa biến)
 
-### 3.2 Cleaning Data
-
-missing value ở dòng 10472
-	
-### 3.3 Thống kê:
-
-##### 3.3.1 Kiểm định giả thuyết
-1. Liệu một ứng dụng có lượt tải lớn có thật sự có điểm rating cao hay không?
-1. Liệu một ứng dụng là game thì sẽ có rating cao hơn các loại còn lại?
-
-##### 3.3.2 Hồi quy 
-1. xem xét sự ảnh hưởng của các yếu tố như thể loại, số lượng tải,.. đến điểm rating của ứng dụng
-
-### 3.4 Học Máy
-1. 
+###### Đề tài trên được thực hiện bằng ngôn ngữ R
 
