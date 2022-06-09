@@ -1,10 +1,4 @@
 ## Đề tài: Các yếu tố ảnh hưởng đến người đối với ứng dụng trên Google Play Store 
-|MSSV|Thành viên|
-|:------:|:----|
-|19133022 |**Hồng Tiến Hào**|
-|19133065 |**Nguyễn Thanh Tùng**|
-|20133036 |**Nguyễn Thành Đồng**|
-|18133024 |**Ngô Phi Lít**|
 
 *Giáo viên hướng dẫn*: **Ths. Quách Đình Hoàng**
 
