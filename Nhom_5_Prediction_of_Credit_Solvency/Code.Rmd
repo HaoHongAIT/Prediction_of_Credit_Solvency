@@ -1,0 +1,534 @@
+
+---
+title: "Starter: EDA and Predict Reviews Google Play Store"
+date: "24/11/2021"
+author: "Hao Hong"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: 
+      collapsed: false
+      smooth_scroll: false
+    umber_sections: true
+---
+
+# Prediction of Credit Solvency
+# I - Overview
+## 1.1. Introduction
+
+- Các ngân hàng đóng một vai trò quan trọng trong các nền kinh tế thị trường. Họ quyết định ai có thể được cấp vốn dựa trên những điều khoản, và điều này ảnh hưởng quyết định có hoặc không đầu tư. Và chức năng tín dụng của ngân hàng sinh ra với mục đích cho cá nhân và doanh nghiệp vay vốn.
+- Các thuật toán phân loại tín dụng, đưa ra dự đoán về xác suất vỡ nợ, là các phương thức mà ngân hàng sử dụng để xác định xem liệu một khoản vay có được cấp hay không. 
+- Dữ liệu được cung cấp bởi cuộc thi trên kaggle yêu cầu những người tham gia cải thiện trạng thái của bức tranh tin dụng được đưa ra, bằng cách dự đoán xác suất mà ai đó sẽ gặp khó khăn tài chính trong 2 năm tới.
+    - Mục tiêu của cuộc thi này là xây dựng một mô hình mà người vay có thể sử dụng để giúp đưa ra quyết định tài chính tốt nhất.
+    - Data source: [https://www.kaggle.com/competitions/GiveMeSomeCredit](https://www.kaggle.com/competitions/GiveMeSomeCredit)
+
+
+### 1.2. Attribute
+|N|Attribute|Describtion|Type|
+|:-|:-|:-|:-:|
+|1|**X**|Số thứ tự|
+|2|**SeriousDlqin2yrs**|Người đã trải quan 90 ngày trễ hạn hạn hoặc hơn|Phân loại|
+|3|**RevolvingUtilizationOfUnsecuredLines**|Tổng số dư trên thẻ tín dụng và hạn mức tín dụng cá nhân (trừ bất động sản và không có nợ trả góp như các khoản vay xe hơi chia cho tổng giới hạn tín dụng)|Liên tục|
+|4|**age**|Tuổi của người vay|Rời rạc|
+|5|**NumberOfTime30-59DaysPastDueNotWorse**|Số lần người vay đã bị quá hạn từ 30-59 ngày (nhưng không tệ hơn trong 2 năm qua)|Rời rạc|
+|6|**DebtRatio**|Thanh toán nợ hàng tháng, tiền cấp dưỡng, chi phí sinh hoạt chia cho tổng thu nhập của tháng|Liên tục|
+|7|**MonthlyIncome**|Thu nhập hàng tháng|Liên tục|
+|8|**NumberOfOpenCreditLinesAndLoans**|Số lượng các khoản vay mở (ví dụ: trả góp xe hơi hoặc thế chấp) và hạn mức tín dụng tín dụng (ví dụ: thẻ tín dụng)|Rời rạc|
+|9|**NumberOfTimes90DaysLate**|Số lần người vay đã bị quá hạn từ 90 ngày hoặc hơn|Rời rạc|
+|10|**NumberRealEstateLoansOrLines**|Số lượng khoản vay thế chấp và cho vay bất động sản (bao gồm [dòng vốn tín dụng nhà](https://filegi.com/business-term/home-equity-line-of-credit/))|Rời rạc|
+|11|**NumberOfTime60-89DaysPastDueNotWorse**|Số lần lịch sử tín dụng ghi nhận không vi phạm các nguyên tắc|Rời rạc|
+|12|**NumberOfDependents**|Số người phụ thuộc/bảo hộ trong gia đình không bao gồm bản thân (vợ / chồng, trẻ em, v.v.) |Rời rạc|
+
+### 1.3. Data
+
+```{r}
+train <- read.csv("./Data/cs-training.csv")
+test <- read.csv("./Data/cs-test.csv")
+dim(test)
+dim(train)
+```
+
+**Nhận Xét:**
+
+- Thuộc tính `X` có lẽ là số thứ tự của tập dữ liệu, ta sẽ bỏ thuộc tính này
+- Thuộc tính `SeriousDlqin2yrs` đang ở kiểu dữ liệu **int** 
+
+
+```{r}
+library(dplyr)
+glimpse(train)
+summary(train)
+```
+
+Có một vài bất thường ở đây như:
+1. Tuổi - `age` của đối tượng nhỏ nhất là 0 và cao nhất là 109.
+2. `NumberOfDependents` và `MonthlyIncome` là 2 thuộc tính duy nhất có có số lượng ***giá trị NA*** khá cao
+
+# II - Understanding Data
+## 2.1. Chênh Lệch Số Quan Sát Giữa 2 Lớp
+
+```{r}
+library(ggplot2)
+class_count <- train%>%
+            dplyr::count(SeriousDlqin2yrs)%>%
+            dplyr::mutate(perc = n/sum(n) * 100)
+
+ggplot (data = class_count, aes(x = as.factor(SeriousDlqin2yrs), 
+                                y = n, 
+                                fill = as.factor(SeriousDlqin2yrs)))+
+    geom_col()+
+    geom_text(aes(x = as.factor(SeriousDlqin2yrs), 
+                  y = n, 
+                  label = paste0(n, " (", round(perc,1),"%)"), 
+                  vjust = -0.5))+
+    theme_classic()+
+    labs(title = "Bar Chart Showing Class", 
+         x = "SeriousDlqin2yrs",
+         y = "Count")
+```
+
+### Nhận Xét 1:
+> - Chênh lệch giữa 2 lớp khá cao
+> - Cân nhắc không sử dụng độ đo **Accuracy**.
+> - Phép đó hiệu quả cho chênh lệch dữ liệu giữa 2 lớp thường được sử dụng là Precision-Recall.
+
+## 2.2. Độ Tuổi Của Các Đối Tượng
+
+```{r}
+sample_size = train %>% group_by(SeriousDlqin2yrs) %>% summarize(num=n())
+train %>%
+left_join(sample_size) %>%
+mutate(myaxis = paste0(as.factor(SeriousDlqin2yrs), "\n", "n=", num)) %>%
+ggplot(aes(x = myaxis, y = age, fill = as.factor(SeriousDlqin2yrs))) +
+geom_violin(width=1.4) +
+geom_boxplot(size = 0.5, outlier.color = "red", outlier.size = 1, width=0.1, color="grey", alpha=0.2) +
+theme(legend.position="none",plot.title = element_text(size=20))+
+labs(title = "Age vs SeriousDlqin2yrs",
+     x = "SeriousDlqin2yrs",
+     y = "age")
+```
+
+
+### Nhận Xét 2:
+> - Đối tượng có số tuổi rất cao hoặc rất thấp thường không có khả năng chi trả tín dụng
+> - Độ tuổi có khả năng chi trả dương như cũng có xu hướng nhỏ hơn
+
+## 2.3. Thu nhập Của Các Đối Tượng
+```{r}
+sample_size = train %>% group_by(SeriousDlqin2yrs) %>% summarize(num=n())
+train %>%
+    left_join(sample_size) %>%
+    mutate(myaxis = paste0(as.factor(SeriousDlqin2yrs), "\n", "n=", num)) %>%
+    ggplot(aes(x = myaxis, y = log(MonthlyIncome), fill = as.factor(SeriousDlqin2yrs))) +
+    geom_violin(width=1.4) +
+    geom_boxplot(size = 0.5, outlier.color = "red", outlier.size = 1, width=0.1, color="grey", alpha=0.2) +
+    theme(legend.position="none",plot.title = element_text(size=20))+
+    labs(title = "Income vs SeriousDlqin2yrs",
+         x = "SeriousDlqin2yrs",
+         y = "log(Income)")
+```
+
+# III - Preprocessing
+## 3.1. Loại Bỏ Tất Cả Giá Trị NA
+Thực hiện: 
+> - Bỏ tất cả các dòng có chứa dữ liệu là NA
+> - Scale một số các giá bằng log()
+
+```{r}
+removeNA <- function(origin_data, replaceData = train){
+    new_data <- origin_data %>%    
+    filter(
+        !is.na(MonthlyIncome),
+        !is.na(NumberOfDependents)
+    )%>%    
+    mutate(
+        X = NULL,
+        SeriousDlqin2yrs = as.factor(ifelse(SeriousDlqin2yrs == 1, "y", "n")),      
+        MonthlyIncome = log(MonthlyIncome+1),
+        DebtRatio = log(DebtRatio+1))
+    return (new_data)
+}
+```
+
+## 3.2. Thay Thế NA Bằng Median
+Thực hiện: 
+> - Bỏ thuộc tính không cần thiết ra khỏi tập dữ liệu
+> - Thay các **giá trị NA** (`NumberOfDependents` và `MonthlyIncome`) bằng **trung vị** (median) của thuộc tính đó
+> - Chuyển đổi biên phản hồi `SeriousDlqin2yrs` về dạng factor để đưa vào thuật toán
+
+```{r}
+replaceMedian <- function(origin_data, replaceData = train){
+new_data <- origin_data %>%
+    mutate(
+        X = NULL,
+        SeriousDlqin2yrs = as.factor(ifelse(SeriousDlqin2yrs == 1, "y", "n")),
+        MonthlyIncome = ifelse(is.na(MonthlyIncome), median(replaceData$MonthlyIncome,na.rm = TRUE), MonthlyIncome),
+        MonthlyIncome = log(MonthlyIncome+1),
+        DebtRatio = log(DebtRatio+1),
+        NumberOfDependents = ifelse(is.na(NumberOfDependents), median(replaceData$NumberOfDependents,na.rm = TRUE), NumberOfDependents),
+    )
+return (new_data)
+}
+```
+
+## 3.3. Rời Rạc Hóa Các Thuộc Tính
+Thực hiện:
+> - `RevolvingUtilizationOfUnsecuredLines`：Chuyển đổi giá trị lớn hơn 1.2 thành 1.2
+> - `age`：Chia thành 3 nhóm chính
+> > 1. Người trẻ
+> > 2. Người trung niên
+> > 3. Người già
+> - `MonthlyIncome`：Chia thành 3 nhóm: 
+> > 1. không xác định
+> > 2. người có thu thấp
+> > 3. người có thu nhập trung bình
+> > 4. người có thu nhập thấp
+> - `NumberOfDependents`： Chuyển đổi giá trị lớn hơn 2 thành 2
+> - `DebtRatio`：Chuyển đổi giá trị lớn 1200 thành 6, chuyển đổi 1200 > giá trị > 6 thành  5
+> >
+> - `NumberOfOpenCreditLinesAndLoans`：[scale các giá trị bằng hàm log()](https://www.indeed.com/career-advice/career-development/logarithmic-scale#:~:text=You%20typically%20use%20a%20logarithmic,scales%2C%20from%20farmers%20to%20researchers.)
+> - `NumberRealEstateLoansOrLines`：Chuyển đổi giá trị lớn hơn 5 thành 5
+> - `NumberOfTime30.59DaysPastDueNotWorse`：Chuyển đổi giá trị lớn hơn 3 thành 3
+> - `NumberOfTime60.89DaysPastDueNotWorse`：Chuyển đổi giá trị lớn hơn 2 thành 2
+> - `NumberOfTimes90DaysLate`：Chuyển đổi giá trị lớn hơn 2 thành 2
+
+```{r}
+replaceDiscrete <- function(origin_data, replaceData = train){
+new_data <- origin_data %>%
+    mutate(
+        X = NULL,
+        SeriousDlqin2yrs = as.factor(ifelse(SeriousDlqin2yrs == 1, "y", "n")),
+        age = as.factor(ifelse(age >= 60, 2, ifelse(age>=30, 1, 0))),
+        MonthlyIncome = as.factor(ifelse(is.na(MonthlyIncome), 0, 
+                                    ifelse(log(MonthlyIncome+1) < 8, 1, 
+                                    ifelse(log(MonthlyIncome+1) < 10, 2, 3)))),
+        NumberOfDependents = as.factor(ifelse(is.na(NumberOfDependents), 0,
+                                        ifelse(NumberOfDependents < 2, 1, 2))),
+        DebtRatio = ifelse(DebtRatio >= 1200, 3.7,DebtRatio),
+        DebtRatio = ifelse(DebtRatio >= 4, 5, DebtRatio),
+        DebtRatio = ifelse(DebtRatio == 3.7, 6, DebtRatio),
+        NumberOfOpenCreditLinesAndLoans = log(NumberOfOpenCreditLinesAndLoans+1),
+        NumberRealEstateLoansOrLines = as.integer(ifelse(NumberRealEstateLoansOrLines > 2, 2, NumberRealEstateLoansOrLines)),
+        NumberOfTime30.59DaysPastDueNotWorse = as.integer(ifelse(NumberOfTime30.59DaysPastDueNotWorse > 2, 2, NumberOfTime30.59DaysPastDueNotWorse)),
+        NumberOfTime60.89DaysPastDueNotWorse = as.integer(ifelse(NumberOfTime60.89DaysPastDueNotWorse > 2, 2, NumberOfTime60.89DaysPastDueNotWorse)),
+        NumberOfTimes90DaysLate = as.integer(ifelse(NumberOfTimes90DaysLate > 2, 2, NumberOfTimes90DaysLate)),
+    )
+return (new_data)
+}
+```
+
+```{r}
+train_clean_0 <- removeNA(train)
+train_clean_1 <- replaceMedian(train)
+train_clean_2 <- replaceDiscrete(train)
+```
+
+## IV- Measure
+### 4.1. Evaluation Measure
+```{r}
+set.seed(1330)
+library(caret)
+library("pROC")
+library("klaR")
+library("e1071")
+```
+
+```{r}
+confusion_matrix <- function(predicted, actual) {
+  return(table(predicted, actual))
+}
+f1_score <- function(cm) {
+    p <- cm[1,1]/sum(cm[1,1:2])
+    r <- cm[1,1]/sum(cm[1:2,1])
+    return((2*p*r)/sum(p,r))
+}
+```
+
+### 4.2. Model Evaluation
+- Sau khi đo performance của mô hình, để chắc chắn kết quả tìm được không phải là ngẫu nhiên ta cần 1 phương pháp đo
+- Vì tập dữ liệu khá lớn nên việc training sẽ mất khá nhiều thời gian nên ta sẽ sử dụng $30\%$ dữ liệu để tìm các siêu tham số thích hợp trước khi sử dụng toàn bộ dữ liệu trên
+- Nếu chỉ sử $30\%$ dữ liệu thì dữ liệu dùng để training tương đối ít (so với tập ban đầu) cho nên ta sẽ sử dụng phương pháp **k-fold cross validation** để đánh giá performance của mô hình
+
+# V - Build Model
+## Split Data
+
+- _0: Tập bỏ giá trị NA
+- _1: Tập thay thế NA bằng median
+- _2: Tập rời rạc hóa các giá trị trong tập dữ liệu
+
+```{r}
+training_30p_0 <- sample_frac(train_clean_0, 0.3)
+training_30p_1 <- sample_frac(train_clean_1, 0.3)
+training_30p_2 <- sample_frac(train_clean_2, 0.3)
+```
+
+## 5.1 KNN
+### 5.1.1. Training
+
+```{r}
+knn <- function(data){
+    control_knn <- trainControl(method = "cv",                        
+                                number = 10,
+                                search = "grid",
+                                classProbs = TRUE,                    
+                                summaryFunction = prSummary)
+    tuneGrid_knn <- expand.grid( k = c(50, 100, 150, 200))
+    train_knn <- train(SeriousDlqin2yrs ~., 
+                       data = data, 
+                       method = 'knn',
+                       metric = "F",
+                       trControl = control_knn,
+                       tuneGrid = tuneGrid_knn,)
+}
+```
+
+```{r}
+knn_remove <- knn(training_30p_0)
+knn_remove
+```
+
+```{r}
+knn_median <- knn(training_30p_1)
+knn_median
+```
+
+```{r}
+knn_discrete <- knn(training_30p_2)
+knn_discrete
+```
+
+## 5.2. Naive Bayes
+### 5.2.1. Training
+### Turning Parameter:
+- **usekernel**: kiểu phân bố áp dụng cho biến liên tục
+ - True: áp dụng phân bố kernel
+ - False: áp dụng phân bố Gaussian 
+- **fL**: phương pháp làm trơn (cộng thêm cho tử và mẫu tránh xác suất = 0)
+- **adjust**: [Tham khảo thêm](https://en.wikipedia.org/wiki/Kernel_density_estimation)
+
+```{r}
+nb <- function(data){
+    default_par = par()
+    control_nb <- trainControl(method = "cv",                       
+                               number = 10,
+                               search = "grid",
+                               classProbs = TRUE,  
+                               summaryFunction = prSummary,)
+    nb_grid <- expand.grid(usekernel = c(TRUE, FALSE),#Kiểu phân bố
+                           fL = c(0, 0.5), # Laplace Correction
+                           adjust = c( 0.5, 1, 2.2, 3.5, 4) # Bandwidth
+                          )
+    train_nb <- train(SeriousDlqin2yrs ~ .,
+                      data = data,
+                      method = "nb",
+                      metric = "F",
+                      tuneGrid = nb_grid, 
+                      trControl = control_nb,
+                      verbose = TRUE,)
+    return(train_nb)
+}
+```
+
+```{r}
+nb_remove <- nb(training_30p_0)
+nb_remove
+```
+
+```{r}
+nb_median <- nb(training_30p_1)
+nb_median
+```
+
+```{r}
+nb_discrete <- nb(training_30p_2)
+nb_discrete
+```
+
+## 5.3. Random Forest
+### 5.3.1. Training
+
+- $mtry$: Số lượng biến ngẫu nhiên được chọn để lần tách = $4$ -> $10$
+- $ntree$: Số cây tao trong random forest = $100, 300, 500$
+
+```{r}
+rf <- function(data,  n){
+    control_rf <- trainControl(method = "cv",                           
+                               number = 10, #10-fold cross validation
+                               search = "grid",
+                               classProbs = TRUE,                           
+                               summaryFunction = prSummary,)
+    tuneGrid_rf <- expand.grid(.mtry = seq(from = 4, to = 10, by = 1))
+    train_rf  <- train(SeriousDlqin2yrs ~ .,
+                       data = data,
+                       method = "rf",
+                       metric = "F",
+                       ntree = n,
+                       tuneGrid = tuneGrid_rf,)
+    return(train_rf)
+}
+```
+
+```{r}
+modellist <- list()
+for (ntree in c(100, 300, 500)){
+    rf_remove <- rf(training_30p_0,ntree)
+    show(rf_remove)
+    key <- toString(ntree)
+    modellist[[key]] <- rf_remove
+}
+results_0 <- resamples(modellist)
+summary(results_0)
+```
+
+```{r}
+modellist <- list()
+for (ntree in c(100, 300, 500)){
+    rf_median <- rf(training_30p_1,ntree)
+    show(rf_median)
+    key <- toString(ntree)
+    modellist[[key]] <- rf_median
+}
+results_1 <- resamples(modellist)
+summary(results_1)
+```
+
+```{r}
+modellist <- list()
+for (ntree in c(100, 300, 500)){
+    rf_discrete <- rf(training_30p_2, ntree)
+    show(rf_discrete)
+    key <- toString(ntree)
+    modellist[[key]] <- rf_discrete
+}
+results_2 <- resamples(modellist)
+summary(results_2)
+```
+
+## 5.4. Best Hyperparameter of 30% training set
+
+||Model|Remove|Median|Discrete|
+|:-|:-|:-:|:-:|:-:|
+|1|**KNN**|0.96|0.96|0.96|
+|2|**Naive Bayes**|0.96|0.97|0.97|
+|3|**Random Forest**|0.97|0.97|0.97|
+
+||Model|Median|Discrete|
+|:-|:-|:-:|:-:|
+|1|**KNN**|200|200|
+|2|**Naive Bayes**|(True, 0, 0.5)|(True, 0, 3.5)|
+|3|**Random Forest**|(4 ,500)|(6,500)|
+
+
+# VI - Submit
+
+```{r}
+submission_model <- function(model, test){
+    predicted_test<- predict(model, test, type="prob")
+    submission <- data_frame('Id' = 1:101503, 'Probability' = predicted_test[,2])
+    return(submission)
+}
+```
+
+## 6.1. Submit KNN
+
+```{r}
+knn <- function(data, n){
+    tuneGrid_knn <- expand.grid( k = n)
+    train_knn <- train(SeriousDlqin2yrs ~., 
+                       data = data, 
+                       method = 'knn',
+                       metric = "AUC",
+                       tuneGrid = tuneGrid_knn)
+}
+knn_median <- knn(train_clean_1, 200)
+knn_discrete <- knn(train_clean_2, 200)
+submission_knn_median <- submission_model(knn_median, replaceMedian(test))
+write.csv(submission_knn_median, 'submission_knn_median.csv', row.names = F)
+submission_knn_Discrete <- submission_model(knn_discrete, replaceDiscrete(test))
+write.csv(submission_knn_Discrete, 'submission_knn_discrete.csv', row.names = F)
+```
+
+## 6.2. Submit Naive Bayes
+
+```{r}
+nb <- function(data, u, f, a){
+    default_par = par()
+    nb_grid <- expand.grid(usekernel = u,#Kiểu phân bố
+                           fL = f, # Laplace Correction
+                           adjust = a # Bandwidth
+                          )
+    train_nb <- train(SeriousDlqin2yrs ~ .,
+                      data = data,
+                      method = "nb",
+                      metric = "AUC",
+                      tuneGrid = nb_grid, 
+                      verbose = TRUE,)
+    return(train_nb)
+}
+nb_median <- nb(train_clean_1, TRUE, 0, 0.5)
+nb_discrete <- nb(train_clean_2,TRUE, 0, 3.5)
+submission_nb_median <- submission_model(nb_median, replaceMedian(test))
+write.csv(submission_nb_median, 'submission_nb_median.csv', row.names=F)
+submission_nb_discrete <- submission_model(nb_discrete, replaceDiscrete(test))
+write.csv(submission_nb_discrete, 'submission_nb_discrete.csv', row.names=F)
+```
+
+## 6.3. Submit Random Forest
+
+```{r}
+rf <- function(data,  n, m){
+    tuneGrid_rf <- expand.grid(.mtry = m)
+    train_rf  <- train(SeriousDlqin2yrs ~ .,
+                       data = data,
+                       method = "rf",
+                       metric = "AUC",
+                       ntree = n,
+                       tuneGrid = tuneGrid_rf
+                      )
+    return(train_rf)
+}
+rf_median <- rf(train_clean_1, 500, 4)
+rf_discrete <- rf(train_clean_2, 500, 6)
+submission_rf_Median <- submission_model(rf_median, replaceMedian(test))
+write.csv(submission_rf_Median, 'submission_rf_median.csv', row.names = F)
+submission_rf_Discrete <- submission_model(rf_discrete, replaceDiscrete(test))
+write.csv(submission_rf_Discrete, 'submission_rf_discrete.csv', row.names = F)
+```
+
+||Model|Median|Discrete|
+|:-|:-|:-:|:-:|
+|1|**KNN**|0.81|0.85|
+|2|**Naive Bayes**|0.83|0.82|
+|3|**Random Forest**|0.85|0.83|
+
+# VII - Importance Value
+
+```{r}
+plotImp <- function(model){
+    important_var = varImp(model, scale=F)
+    plot(important_var, top = 5)
+}
+```
+
+```{r}
+plotImp(knn_median)
+plotImp(knn_discrete)
+```
+
+```{r}
+plotImp(nb_median)
+plotImp(nb_discrete)
+```
+
+```{r}
+plotImp(rf_median)
+plotImp(rf_discrete)
+```
+
+# References
+[Mortonkuo](github.com/mortonkuo/Top-7-pct_Give-Me-Some-Credit_Kaggle)
+
+```{r}
+
+```
